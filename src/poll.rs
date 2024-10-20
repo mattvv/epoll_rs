@@ -69,7 +69,21 @@ impl Registry {
      */
     pub fn register(&self, source: &TcpStream, token: usize, interests: i32) -> Result<()> 
     {
-        todo!()
+        let mut event = ffi::Event {
+            events: interests as u32,
+            epoll_data: token,
+        };
+
+        let op = ffi::EPOLL_CTL_ADD;
+        let res= unsafe {
+            ffi::epoll_ctl(self.raw_fd, op, source.as_raw_fd(), &mut event);
+        };
+
+        if res < 0 {
+            return Err(io::Error::last_os_error());
+        }
+
+        Ok(())
     }
 }
 
