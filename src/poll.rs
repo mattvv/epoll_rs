@@ -1,75 +1,63 @@
 use std::{
     io::{self, Result},
     net::TcpStream,
-    os::fd::AsRawFd
+    os::fd::AsRawFd,
 };
+
 use crate::ffi;
 
 type Events = Vec<ffi::Event>;
 
-/**
- * Represents Event Queue
- */
 pub struct Poll {
     registry: Registry,
 }
 
 impl Poll {
-    /**
-     * Create a new event queue
-     */
     pub fn new() -> Result<Self> {
-        let res = unsafe { ffi::epoll_create(1)};
+        let res = unsafe { ffi::epoll_create(1) };
         if res < 0 {
             return Err(io::Error::last_os_error());
         }
 
         Ok(Self {
-            registry: Registry { raw_fd: res }
+            registry: Registry { raw_fd: res },
         })
     }
 
-    /**
-     * Returns a reference to the registry we can use to register interest aboutb new events
-     */
     pub fn registry(&self) -> &Registry {
         &self.registry
     }
 
-    /**
-     * Blocks the thread it's called on until an event is ready or it times out
-     */
+    /// Makes a blocking call to the OS parking the calling thread. It will wake up
+    /// when one or more events we've registered interest in have occurred or
+    /// the timeout duration has elapsed, whichever occurs first.
+    ///
+    /// # Note
+    /// If the number of events returned is 0, the wakeup was due to an elapsed
+    /// timeout
     pub fn poll(&mut self, events: &mut Events, timeout: Option<i32>) -> Result<()> {
-        // get file descriptor
         let fd = self.registry.raw_fd;
         let timeout = timeout.unwrap_or(-1);
         let max_events = events.capacity() as i32;
-
-        let res = unsafe { ffi::epoll_wait(fd, events.as_mut_ptr(), max_events, timeout)};
+        let res = unsafe { ffi::epoll_wait(fd, events.as_mut_ptr(), max_events, timeout) };
 
         if res < 0 {
             return Err(io::Error::last_os_error());
-        }
+        };
 
+        // This is safe because epoll_wait ensures that `res` events are assigned.
         unsafe { events.set_len(res as usize) };
-
         Ok(())
     }
 }
 
-/**
- * Allows us to register new events on the system
- */
 pub struct Registry {
     raw_fd: i32,
 }
 
 impl Registry {
-    /**
-     * Mimic's mio's register schema.
-     */
-    pub fn register(&self, source: &TcpStream, token: usize, interests: i32) -> Result<()> 
-    {
+    // NB! Mio inverts this, and `source` owns the register implementation
+    pub fn register(&self, source: &TcpStream, token: usize, interests: i32) -> Result<()> {
         let mut event = ffi::Event {
             events: interests as u32,
             epoll_data: token,
@@ -81,18 +69,18 @@ impl Registry {
         if res < 0 {
             return Err(io::Error::last_os_error());
         }
-
         Ok(())
     }
 }
 
 impl Drop for Registry {
     fn drop(&mut self) {
-        let res = unsafe { ffi::close(self.raw_fd)};
+        let res = unsafe { ffi::close(self.raw_fd) };
 
         if res < 0 {
+            // Note! Mio logs the error but does not panic!
             let err = io::Error::last_os_error();
-            eprintln!("ERROR: {err:?}");
+            println!("ERROR: {err:?}");
         }
     }
 }
