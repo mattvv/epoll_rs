@@ -17,7 +17,14 @@ impl Poll {
      * Create a new event queue
      */
     pub fn new() -> Result<Self> {
-        todo!()
+        let res = unsafe { ffi::epoll_create(1)};
+        if res < 0 {
+            return Err(io::Error::last_os_error());
+        }
+
+        Ok(Self {
+            registry: Registry { raw_fd: res }
+        })
     }
 
     /**

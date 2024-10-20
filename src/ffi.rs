@@ -31,7 +31,7 @@ extern "C" {
 pub struct Event {
     pub(crate) events: u32, //bitmask
     //token to identify event
-    pub(create) epoll_data: usize,
+    pub(crate) epoll_data: usize,
 }
 
 impl Event {
