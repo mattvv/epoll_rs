@@ -2,7 +2,7 @@ pub const EPOLL_CTL_ADD: i32 = 1;
 pub const EPOLLIN: i32 = 0x1; //read ops bitflag
 pub const EPOLLET: i32 = 1 << 31; // edge triggered mode bitflag
 
-#[link(name = "C")]
+#[link(name = "c")]
 extern "C" {
     // Create an epoll queue 
     pub fn epoll_create(size: i32) -> i32;
