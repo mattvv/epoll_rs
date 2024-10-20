@@ -5,6 +5,8 @@ use std::{
 }
 use crate::ffi;
 
+type Events = Vec<ffi::Event>;
+
 /**
  * Represents Event Queue
  */
@@ -37,8 +39,20 @@ impl Poll {
     /**
      * Blocks the thread it's called on until an event is ready or it times out
      */
-    pub fn poll(&mut self, events: &mut Events, timout: Option<i32>) -> Result<()> {
-        todo!()
+    pub fn poll(&mut self, events: &mut Events, timeout: Option<i32>) -> Result<()> {
+        // get file descriptor
+        let fd = self.registry.raw_fd;
+        let timeout = timeout.unwrap_or(-1);
+        let max_events = events.capacity() as i32;
+
+        let res = unsafe { ffi::epoll_wait(fd, events.as_mut_ptr(), max_events, timeout)};
+
+        if res < 0 {
+            return Err(io::Error::last_os_error());
+        }
+
+        unsafe { events.set_len(res as usize) };
+        Ok(());
     }
 }
 
