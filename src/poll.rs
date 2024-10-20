@@ -2,7 +2,7 @@ use std::{
     io::{self, Result},
     net::TcpStream,
     os::fd::AsRawFd
-}
+};
 use crate::ffi;
 
 type Events = Vec<ffi::Event>;
@@ -52,7 +52,8 @@ impl Poll {
         }
 
         unsafe { events.set_len(res as usize) };
-        Ok(());
+
+        Ok(())
     }
 }
 
@@ -75,9 +76,7 @@ impl Registry {
         };
 
         let op = ffi::EPOLL_CTL_ADD;
-        let res= unsafe {
-            ffi::epoll_ctl(self.raw_fd, op, source.as_raw_fd(), &mut event);
-        };
+        let res = unsafe { ffi::epoll_ctl(self.raw_fd, op, source.as_raw_fd(), &mut event) };
 
         if res < 0 {
             return Err(io::Error::last_os_error());
@@ -89,6 +88,11 @@ impl Registry {
 
 impl Drop for Registry {
     fn drop(&mut self) {
-        todo!()
+        let res = unsafe { ffi::close(self.raw_fd)};
+
+        if res < 0 {
+            let err = io::Error::last_os_error();
+            eprintln!("ERROR: {err:?}");
+        }
     }
 }
